@@ -208,6 +208,15 @@ public class Lexer
      */
     private void loadKeywords()
     {
-        keywords = new HashMap<String, TokenType>();
+        keywords = new HashMap<>();
+
+        // Reserved words
+        keywords.put("val", TokenType.VAL);
+        keywords.put("not", TokenType.NOT);
+        keywords.put("and", TokenType.AND);
+        keywords.put("or", TokenType.OR);
+        keywords.put("mod", TokenType.MOD);
+        keywords.put("true", TokenType.TRUE);
+        keywords.put("false", TokenType.FALSE);
     }
 }
