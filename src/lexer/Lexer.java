@@ -168,10 +168,39 @@ public class Lexer
             stream.skipNextAdvance();
             return new Token(TokenType.REAL, value);
         case '+':
+            stream.advance();
             return new Token(TokenType.ADD, "+");
+        case '-':
+             stream.advance();
+            return new Token(TokenType.SUB, "-");
+        case '*':
+          stream.advance();
+            return new Token(TokenType.MULT, "*");
+        case '/':
+            stream.advance();
+            return new Token(TokenType.DIV, "/");  
+        case')': 
+            stream.advance();
+            return new Token(TokenType.LPAREN, "(");
+        case'(':
+            stream.advance();
+            return new Token(TokenType.RPAREN, ")");
+        case ':':
+            stream.advance();
+            if (stream.getCurrentChar() == '=')
+                return new Token(TokenType.ASSIGN, ":=");
+            else
+            {
+                stream.skipNextAdvance();
+                return new Token(TokenType.UNKNOWN, "");
+            }
+        case ';':
+            stream.advance();
+            return new Token(TokenType.SEMI, ";");
         case '=':
+            stream.advance();
             return new Token(TokenType.EQ, "=");
-        case '!':
+        case '!':   
             stream.advance();
             if (stream.getCurrentChar() == '=')
                 return new Token(TokenType.NEQ, "!=");
@@ -198,8 +227,10 @@ public class Lexer
                 stream.skipNextAdvance();
                 return new Token(TokenType.LT, "<");
             }
-        default:
-            return new Token(TokenType.UNKNOWN, String.valueOf(stream.getCurrentChar()));
+            default:
+            char ch = stream.getCurrentChar();
+            stream.advance();
+            return new Token(TokenType.UNKNOWN, String.valueOf(ch));
         }
     }
 
