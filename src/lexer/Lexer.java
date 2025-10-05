@@ -168,10 +168,39 @@ public class Lexer
             stream.skipNextAdvance();
             return new Token(TokenType.REAL, value);
         case '+':
+            stream.advance();
             return new Token(TokenType.ADD, "+");
+        case '-':
+             stream.advance();
+            return new Token(TokenType.SUB, "-");
+        case '*':
+          stream.advance();
+            return new Token(TokenType.MULT, "*");
+        case '/':
+            stream.advance();
+            return new Token(TokenType.DIV, "/");  
+        case')': 
+            stream.advance();
+            return new Token(TokenType.LPAREN, "(");
+        case'(':
+            stream.advance();
+            return new Token(TokenType.RPAREN, ")");
+        case ':':
+            stream.advance();
+            if (stream.getCurrentChar() == '=')
+                return new Token(TokenType.ASSIGN, ":=");
+            else
+            {
+                stream.skipNextAdvance();
+                return new Token(TokenType.UNKNOWN, "");
+            }
+        case ';':
+            stream.advance();
+            return new Token(TokenType.SEMI, ";");
         case '=':
+            stream.advance();
             return new Token(TokenType.EQ, "=");
-        case '!':
+        case '!':   
             stream.advance();
             if (stream.getCurrentChar() == '=')
                 return new Token(TokenType.NEQ, "!=");
@@ -198,8 +227,10 @@ public class Lexer
                 stream.skipNextAdvance();
                 return new Token(TokenType.LT, "<");
             }
-        default:
-            return new Token(TokenType.UNKNOWN, String.valueOf(stream.getCurrentChar()));
+            default:
+            char ch = stream.getCurrentChar();
+            stream.advance();
+            return new Token(TokenType.UNKNOWN, String.valueOf(ch));
         }
     }
 
@@ -208,6 +239,15 @@ public class Lexer
      */
     private void loadKeywords()
     {
-        keywords = new HashMap<String, TokenType>();
+        keywords = new HashMap<>();
+
+        // Reserved words
+        keywords.put("val", TokenType.VAL);
+        keywords.put("not", TokenType.NOT);
+        keywords.put("and", TokenType.AND);
+        keywords.put("or", TokenType.OR);
+        keywords.put("mod", TokenType.MOD);
+        keywords.put("true", TokenType.TRUE);
+        keywords.put("false", TokenType.FALSE);
     }
 }
