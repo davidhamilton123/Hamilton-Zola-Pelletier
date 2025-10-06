@@ -1,5 +1,5 @@
 // File: syntax/nodes/SyntaxNode.java
-package syntax.nodes;
+package syntax;
 
 /**
  * Base class for all nodes in the Abstract Syntax Tree (AST).
