@@ -24,21 +24,16 @@ import lexer.Lexer;
 /**
  * <p>
  * Parser for the MFL language. This is largely private methods where
- * there is one method the "eval" method for each non-terminal of the grammar.
+ * there is one method — the "eval" method — for each non-terminal of the grammar.
  * There are also a collection of private "handle" methods that handle one
  * production associated with a non-terminal.
  * </p>
+ * 
  * <p>
- * Each of the private methods operates on the token stream. It is important to 
+ * Each private method operates on the token stream. It is important to 
  * remember that all of our non-terminal processing methods maintain the invariant
- * that each method leaves the concludes such that the next unprocessed token is at
- * the front of the token stream. This means each method can assume the current token
- * has not yet been processed when the method begins. The methods {@code checkMatch}
- * and {@code match} are methods that maintain this invariant in the case of a match. 
- * The method {@code tokenIs} does NOT advnace the token stream. To advance the token
- * stream the {@code nextTok} method can be used. In the rare cases that the token 
- * at the head of the stream must be accessed directly, the {@code getCurrToken}
- * method can be used.
+ * that each method leaves the stream positioned so that the next unprocessed token
+ * is at the front of the stream.
  * </p>
  * 
  * @author Zach Kissel
@@ -61,7 +56,7 @@ public class MFLParser extends Parser {
      * @param str the code to evaluate.
      */
     public MFLParser(String str) {
-      super(new Lexer(str));
+        super(new Lexer(str));
     }
 
     /**
@@ -71,11 +66,13 @@ public class MFLParser extends Parser {
      * @throws ParseException when parsing fails.
      */
     public SyntaxTree parse() throws ParseException {
-       return null;
+        // TEMP STUB so --ast doesn't crash; replace with real parser soon.
+        // This ensures Interpreter.java doesn't throw NullPointerException.
+        return new SyntaxTree();
     }
 
     /************
-     * Evaluation methods to constrct the AST associated with the non-terminals
+     * Evaluation methods to construct the AST associated with the non-terminals
      ***********/
+}
 
-    }
