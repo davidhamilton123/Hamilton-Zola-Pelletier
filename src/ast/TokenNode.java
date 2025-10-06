@@ -1,5 +1,8 @@
-// This is TokenNode.java
+package ast;
+
+
 import ast.nodes.SyntaxNode;
+// This is TokenNode.java
 import lexer.Token;
 
 /** Leaf node wrapping a token (ID, INT, REAL, TRUE, FALSE). */
