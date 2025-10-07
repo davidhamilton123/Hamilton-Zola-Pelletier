@@ -40,7 +40,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         description="Compile source code">
     <javac includeantruntime="false"
       srcdir="${src}" destdir="${build}" debug="true"
-      debuglevel="lines,vars,source">
+      debuglevel="lines,vars,source" release="21" fork="true">
       <compilerarg value="-Xlint:deprecation,unchecked" />
       <classpath>
           <fileset dir="${lib}" includes="**/*.jar"/>  
@@ -51,7 +51,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
   <target name="testcompile" depends="compile" description="Compile tests">
     <javac includeantruntime="false"
       srcdir="${testsrc}" destdir="${build}/tests" debug="true"
-      debuglevel="lines,vars,source">
+      debuglevel="lines,vars,source" release="21" fork="true">
       <compilerarg value="-Xlint:deprecation,unchecked" />
       <classpath>
           <fileset dir="${lib}" includes="**/*.jar"/> 
@@ -75,8 +75,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
       </jar>
   </target>
 
-   <target name="api" depends="init" description="generate javadoc">
-    <javadoc sourcepath="${src}" destdir="${api}"/>
+  <target name="api" depends="init" description="generate javadoc">
+    <javadoc sourcepath="${src}" destdir="${api}" source="21"/>
   </target>
 
   <!-- Run target for Netbeans and other IDEs supporting ant -->
