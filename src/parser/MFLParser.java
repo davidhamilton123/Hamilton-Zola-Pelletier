@@ -14,6 +14,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+
 package parser;
 
 import java.io.File;
@@ -27,7 +28,6 @@ import ast.nodes.SyntaxNode;
 import lexer.Lexer;
 import lexer.Token;
 import lexer.TokenType;
-
 
 /**
  * Parser for the MFL language using Recursive Descent Parsing.
@@ -51,109 +51,108 @@ public class MFLParser extends Parser {
         super(new Lexer(str));
     }
 
-    /**
-     * Entry point for parsing — builds the full AST.
-     */
     @Override
     public SyntaxTree parse() throws ParseException {
-        nextToken(); // Initialize first token
+        nextToken();
         SyntaxNode root = parseProg();
 
-        // Ensure program ends properly
         if (!tokenIs(TokenType.EOF))
             logError("Unexpected token after end of program.");
 
         return new SyntaxTree(root);
     }
 
-    /**********************
-     * Grammar Methods
-     **********************/
-
+    // <prog> → <val> ; { <val> ; }
     private SyntaxNode parseProg() throws ParseException {
-        trace("<prog>");
-        List<SyntaxNode> valNodes = new ArrayList<>();
+        List<SyntaxNode> stmts = new ArrayList<>();
 
-        valNodes.add(getGoodParse(parseVal()));
-        match(TokenType.SEMI, ";");
-
-        while (!tokenIs(TokenType.EOF)) {
-            valNodes.add(getGoodParse(parseVal()));
-            match(TokenType.SEMI, ";");
+        // handle empty files gracefully
+        if (tokenIs(TokenType.EOF)) {
+            return new ProgNode(getCurrLine(), new ArrayList<>());
         }
 
-        return new ListNode(getCurrLine(), "Program", valNodes);
+        while (!tokenIs(TokenType.EOF)) {
+            SyntaxNode stmt = parseVal();
+            if (stmt != null) stmts.add(stmt);
+
+            if (tokenIs(TokenType.SEMI))
+                match(TokenType.SEMI, ";");
+            else
+                break;
+        }
+
+        return new ProgNode(getCurrLine(), stmts);
     }
 
+    // <val> → val <id> := <expr> | <expr>
     private SyntaxNode parseVal() throws ParseException {
-        trace("<val>");
         if (checkMatch(TokenType.VAL)) {
             Token idTok = getCurrToken();
             match(TokenType.ID, "identifier");
             match(TokenType.ASSIGN, ":=");
-            SyntaxNode exprNode = getGoodParse(parseExpr());
-            return new BinaryOpNode(getCurrLine(), "valDecl", new TokenNode(getCurrLine(), idTok), exprNode);
+            SyntaxNode expr = parseExpr();
+            return new ValNode(getCurrLine(), idTok.getValue(), expr);
         } else {
             return parseExpr();
         }
     }
 
+    // <expr> → <rexpr> { (and | or) <rexpr> }
     private SyntaxNode parseExpr() throws ParseException {
-        trace("<expr>");
-        SyntaxNode left = getGoodParse(parseRexpr());
+        SyntaxNode left = parseRexpr();
         while (tokenIs(TokenType.AND) || tokenIs(TokenType.OR)) {
             Token op = getCurrToken();
             nextToken();
-            SyntaxNode right = getGoodParse(parseRexpr());
-            left = new BinaryOpNode(getCurrLine(), op.getValue(), left, right);
+            SyntaxNode right = parseRexpr();
+            left = new BinOpNode(getCurrLine(), op.getType().name(), left, right);
         }
         return left;
     }
 
+    // <rexpr> → <mexpr> [ ( < | > | >= | <= | = | != ) <mexpr> ]
     private SyntaxNode parseRexpr() throws ParseException {
-        trace("<rexpr>");
-        SyntaxNode left = getGoodParse(parseMexpr());
-        if (tokenIs(TokenType.GT) || tokenIs(TokenType.LT) || tokenIs(TokenType.GTE) ||
-            tokenIs(TokenType.LTE) || tokenIs(TokenType.EQ) || tokenIs(TokenType.NEQ)) {
+        SyntaxNode left = parseMexpr();
+        if (tokenIs(TokenType.GT) || tokenIs(TokenType.LT) || tokenIs(TokenType.GTE)
+                || tokenIs(TokenType.LTE) || tokenIs(TokenType.EQ) || tokenIs(TokenType.NEQ)) {
             Token op = getCurrToken();
             nextToken();
-            SyntaxNode right = getGoodParse(parseMexpr());
-            return new BinaryOpNode(getCurrLine(), op.getValue(), left, right);
+            SyntaxNode right = parseMexpr();
+            return new RelOpNode(getCurrLine(), op.getType().name(), left, right);
         }
         return left;
     }
 
+    // <mexpr> → <term> { ( + | - ) <term> }
     private SyntaxNode parseMexpr() throws ParseException {
-        trace("<mexpr>");
-        SyntaxNode left = getGoodParse(parseTerm());
+        SyntaxNode left = parseTerm();
         while (tokenIs(TokenType.ADD) || tokenIs(TokenType.SUB)) {
             Token op = getCurrToken();
             nextToken();
-            SyntaxNode right = getGoodParse(parseTerm());
-            left = new BinaryOpNode(getCurrLine(), op.getValue(), left, right);
+            SyntaxNode right = parseTerm();
+            left = new BinOpNode(getCurrLine(), op.getType().name(), left, right);
         }
         return left;
     }
 
+    // <term> → not <rexpr> | <factor> { ( * | / | mod ) <factor> }
     private SyntaxNode parseTerm() throws ParseException {
-        trace("<term>");
         if (checkMatch(TokenType.NOT)) {
-            SyntaxNode expr = getGoodParse(parseRexpr());
-            return new UnaryOpNode(getCurrLine(), "not", expr);
+            SyntaxNode expr = parseRexpr();
+            return new UnaryOpNode(getCurrLine(), "NOT", expr);
         }
 
-        SyntaxNode left = getGoodParse(parseFactor());
+        SyntaxNode left = parseFactor();
         while (tokenIs(TokenType.MULT) || tokenIs(TokenType.DIV) || tokenIs(TokenType.MOD)) {
             Token op = getCurrToken();
             nextToken();
-            SyntaxNode right = getGoodParse(parseFactor());
-            left = new BinaryOpNode(getCurrLine(), op.getValue(), left, right);
+            SyntaxNode right = parseFactor();
+            left = new BinOpNode(getCurrLine(), op.getType().name(), left, right);
         }
         return left;
     }
 
+    // <factor> → <id> | <int> | <real> | ( <expr> ) | true | false
     private SyntaxNode parseFactor() throws ParseException {
-        trace("<factor>");
         Token tok = getCurrToken();
 
         switch (tok.getType()) {
@@ -164,78 +163,102 @@ public class MFLParser extends Parser {
             case FALSE:
                 nextToken();
                 return new TokenNode(getCurrLine(), tok);
-
             case LPAREN:
                 match(TokenType.LPAREN, "(");
-                SyntaxNode exprNode = getGoodParse(parseExpr());
+                SyntaxNode expr = parseExpr();
                 match(TokenType.RPAREN, ")");
-                return exprNode;
-
+                return expr;
             default:
-                logError("Unexpected token in <factor>: " + tok);
+                logError("Unexpected token in factor: " + tok);
                 throw new ParseException();
         }
     }
 
     /**********************
-     * Helper Node Classes
+     * AST Node Definitions
      **********************/
 
-    // Represents binary operations: +, -, *, /, mod, and, or, <, >, etc.
-    private static class BinaryOpNode extends SyntaxNode {
+    private static class ProgNode extends SyntaxNode {
+        private final List<SyntaxNode> children;
+        public ProgNode(long line, List<SyntaxNode> children) {
+            super(line);
+            this.children = children;
+        }
+        @Override
+        public void displaySubtree(int indent) {
+            printIndented("Prog(", indent);
+            for (SyntaxNode child : children) {
+                child.displaySubtree(indent + 2);
+            }
+            printIndented(")", indent);
+        }
+    }
+
+    private static class ValNode extends SyntaxNode {
+        private final String name;
+        private final SyntaxNode expr;
+        public ValNode(long line, String name, SyntaxNode expr) {
+            super(line);
+            this.name = name;
+            this.expr = expr;
+        }
+        @Override
+        public void displaySubtree(int indent) {
+            printIndented("Val[" + name + "](", indent);
+            expr.displaySubtree(indent + 2);
+            printIndented(")", indent);
+        }
+    }
+
+    private static class BinOpNode extends SyntaxNode {
         private final String op;
         private final SyntaxNode left, right;
-
-        public BinaryOpNode(long lineNumber, String op, SyntaxNode left, SyntaxNode right) {
-            super(lineNumber);
+        public BinOpNode(long line, String op, SyntaxNode left, SyntaxNode right) {
+            super(line);
             this.op = op;
             this.left = left;
             this.right = right;
         }
-
         @Override
-        public void displaySubtree(int indentAmt) {
-            printIndented("BinaryOp(" + op + ")", indentAmt);
-            left.displaySubtree(indentAmt + 2);
-            right.displaySubtree(indentAmt + 2);
+        public void displaySubtree(int indent) {
+            printIndented("BinOp[" + op + "](", indent);
+            left.displaySubtree(indent + 2);
+            right.displaySubtree(indent + 2);
+            printIndented(")", indent);
         }
     }
 
-    // Represents unary operations like "not"
+    private static class RelOpNode extends SyntaxNode {
+        private final String op;
+        private final SyntaxNode left, right;
+        public RelOpNode(long line, String op, SyntaxNode left, SyntaxNode right) {
+            super(line);
+            this.op = op;
+            this.left = left;
+            this.right = right;
+        }
+        @Override
+        public void displaySubtree(int indent) {
+            printIndented("RelOp[" + op + "](", indent);
+            left.displaySubtree(indent + 2);
+            right.displaySubtree(indent + 2);
+            printIndented(")", indent);
+        }
+    }
+
     private static class UnaryOpNode extends SyntaxNode {
         private final String op;
         private final SyntaxNode expr;
-
-        public UnaryOpNode(long lineNumber, String op, SyntaxNode expr) {
-            super(lineNumber);
+        public UnaryOpNode(long line, String op, SyntaxNode expr) {
+            super(line);
             this.op = op;
             this.expr = expr;
         }
-
         @Override
-        public void displaySubtree(int indentAmt) {
-            printIndented("UnaryOp(" + op + ")", indentAmt);
-            expr.displaySubtree(indentAmt + 2);
-        }
-    }
-
-    // Represents a list of nodes (e.g. program body)
-    private static class ListNode extends SyntaxNode {
-        private final String label;
-        private final List<SyntaxNode> children;
-
-        public ListNode(long lineNumber, String label, List<SyntaxNode> children) {
-            super(lineNumber);
-            this.label = label;
-            this.children = children;
-        }
-
-        @Override
-        public void displaySubtree(int indentAmt) {
-            printIndented(label, indentAmt);
-            for (SyntaxNode child : children) {
-                child.displaySubtree(indentAmt + 2);
-            }
+        public void displaySubtree(int indent) {
+            printIndented("UnaryOp[" + op + "](", indent);
+            expr.displaySubtree(indent + 2);
+            printIndented(")", indent);
         }
     }
 }
