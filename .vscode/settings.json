@@ -1,0 +1,6 @@
+{
+  "java.project.sourcePaths": ["lib", "src"],
+  "java.project.referencedLibraries": [
+    "c:\\Users\\jackp\\OneDrive\\Documents\\ProgrammingLanguages\\NerdFeature\\Hamilton-Zola-Pelletier\\lib\\merrimackutil.jar"
+  ]
+}
