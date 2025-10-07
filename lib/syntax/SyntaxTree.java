@@ -1,6 +1,8 @@
 // File: syntax/SyntaxTree.java
 package syntax;
 
+import syntax.Nodes.SyntaxNode;
+
 /**
  * Represents the root of an Abstract Syntax Tree (AST).
  * Stores a reference to the root node and provides utilities to display it.
