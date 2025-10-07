@@ -21,28 +21,40 @@ import java.io.FileNotFoundException;
 import java.util.LinkedList;
 
 import ast.SyntaxTree;
-import ast.nodes.SyntaxNode;
-import ast.nodes.ProgNode;
-import ast.nodes.ValNode;
 import ast.nodes.BinOpNode;
-import ast.nodes.UnaryOpNode;
+import ast.nodes.ProgNode;
+import ast.nodes.SyntaxNode;
 import ast.nodes.TokenNode;
+import ast.nodes.UnaryOpNode;
+import ast.nodes.ValNode;
 import lexer.Lexer;
 import lexer.Token;
 import lexer.TokenType;
-import parser.ParseException;
 
 /**
- * Parser for the MFL language.
- * Builds an AST using recursive-descent methods for a small expression grammar.
+ * <p>
+ * Parser for the MFL language. This is largely private methods where
+ * there is one method — the "eval" method — for each non-terminal of the grammar.
+ * There are also a collection of private "handle" methods that handle one
+ * production associated with a non-terminal.
+ * </p>
+ *
+ * <p>
+ * Each private method operates on the token stream. It is important to
+ * remember that all of our non-terminal processing methods maintain the invariant
+ * that each method leaves the stream positioned so that the next unprocessed token
+ * is at the front of the stream.
+ * </p>
+ *
+ * @author Zach Kissel
  */
 public class MFLParser extends Parser {
 
     /**
-     * Constructs a new parser for the file {@code src}.
+     * Constructs a new parser for the file {@code source} by setting up lexer.
      *
      * @param src the source code file to parse.
-     * @throws FileNotFoundException if the file cannot be found.
+     * @throws FileNotFoundException if the file can not be found.
      */
     public MFLParser(File src) throws FileNotFoundException {
         super(new Lexer(src));
@@ -58,23 +70,20 @@ public class MFLParser extends Parser {
     }
 
     /**
-     * Parses according to the grammar and returns the AST.
+     * Parses the file according to the grammar.
+     *
+     * @return the abstract syntax tree representing the parsed program.
+     * @throws ParseException when parsing fails.
      */
     @Override
     public SyntaxTree parse() throws ParseException {
-        // PRIME the token stream (loads first non-comment token into nextTok)
-        nextToken();
-
         SyntaxNode root = parseProg();
         return new SyntaxTree(root);
     }
 
-    // ---------------------------------------------------------------------
-    // Helpers
-    // ---------------------------------------------------------------------
-
-    // Token doesn't carry line numbers in this codebase; use a placeholder.
-    private long currentLine() { return 1L; }
+    /************
+     * Evaluation methods to construct the AST associated with the non-terminals
+     ***********/
 
     // program := { statement ';' }
     private SyntaxNode parseProg() throws ParseException {
@@ -84,7 +93,8 @@ public class MFLParser extends Parser {
             match(TokenType.SEMI, ";");
             stmts.add(s);
         }
-        return new ProgNode(currentLine(), stmts);
+        long line = (getCurrToken() != null) ? getCurrToken().getLineNumber() : 1;
+        return new ProgNode(line, stmts);
     }
 
     // statement := 'val' ID ':=' expr | expr
@@ -95,22 +105,25 @@ public class MFLParser extends Parser {
             match(TokenType.ID, "identifier");
             match(TokenType.ASSIGN, ":=");
             SyntaxNode rhs = parseExpr();
-            return new ValNode(currentLine(), name, rhs);
+            return new ValNode(name.getLineNumber(), name, rhs);
         } else {
             return parseExpr();
         }
     }
 
     // expr := orExpr
-    private SyntaxNode parseExpr() throws ParseException { return parseOr(); }
+    private SyntaxNode parseExpr() throws ParseException {
+        return parseOr();
+    }
 
     // orExpr := andExpr { OR andExpr }
     private SyntaxNode parseOr() throws ParseException {
         SyntaxNode left = parseAnd();
         while (tokenIs(TokenType.OR)) {
-            Token op = getCurrToken(); match(TokenType.OR, "or");
+            Token op = getCurrToken();
+            match(TokenType.OR, "or");
             SyntaxNode right = parseAnd();
-            left = new BinOpNode(currentLine(), left, op.getType(), right);
+            left = new BinOpNode(op.getLineNumber(), left, op.getType(), right);
         }
         return left;
     }
@@ -119,9 +132,10 @@ public class MFLParser extends Parser {
     private SyntaxNode parseAnd() throws ParseException {
         SyntaxNode left = parseAdd();
         while (tokenIs(TokenType.AND)) {
-            Token op = getCurrToken(); match(TokenType.AND, "and");
+            Token op = getCurrToken();
+            match(TokenType.AND, "and");
             SyntaxNode right = parseAdd();
-            left = new BinOpNode(currentLine(), left, op.getType(), right);
+            left = new BinOpNode(op.getLineNumber(), left, op.getType(), right);
         }
         return left;
     }
@@ -131,10 +145,12 @@ public class MFLParser extends Parser {
         SyntaxNode left = parseMul();
         while (tokenIs(TokenType.ADD) || tokenIs(TokenType.SUB)) {
             Token op = getCurrToken();
-            if (tokenIs(TokenType.ADD)) match(TokenType.ADD, "+");
-            else match(TokenType.SUB, "-");
+            if (tokenIs(TokenType.ADD))
+                match(TokenType.ADD, "+");
+            else
+                match(TokenType.SUB, "-");
             SyntaxNode right = parseMul();
-            left = new BinOpNode(currentLine(), left, op.getType(), right);
+            left = new BinOpNode(op.getLineNumber(), left, op.getType(), right);
         }
         return left;
     }
@@ -144,11 +160,14 @@ public class MFLParser extends Parser {
         SyntaxNode left = parseUnary();
         while (tokenIs(TokenType.MULT) || tokenIs(TokenType.DIV) || tokenIs(TokenType.MOD)) {
             Token op = getCurrToken();
-            if (tokenIs(TokenType.MULT)) match(TokenType.MULT, "*");
-            else if (tokenIs(TokenType.DIV)) match(TokenType.DIV, "/");
-            else match(TokenType.MOD, "mod");
+            if (tokenIs(TokenType.MULT))
+                match(TokenType.MULT, "*");
+            else if (tokenIs(TokenType.DIV))
+                match(TokenType.DIV, "/");
+            else
+                match(TokenType.MOD, "mod");
             SyntaxNode right = parseUnary();
-            left = new BinOpNode(currentLine(), left, op.getType(), right);
+            left = new BinOpNode(op.getLineNumber(), left, op.getType(), right);
         }
         return left;
     }
@@ -156,9 +175,10 @@ public class MFLParser extends Parser {
     // unary := NOT unary | primary
     private SyntaxNode parseUnary() throws ParseException {
         if (tokenIs(TokenType.NOT)) {
-            Token op = getCurrToken(); match(TokenType.NOT, "not");
+            Token op = getCurrToken();
+            match(TokenType.NOT, "not");
             SyntaxNode child = parseUnary();
-            return new UnaryOpNode(currentLine(), op.getType(), child);
+            return new UnaryOpNode(op.getLineNumber(), op.getType(), child);
         }
         return parsePrimary();
     }
@@ -167,12 +187,12 @@ public class MFLParser extends Parser {
     private SyntaxNode parsePrimary() throws ParseException {
         Token tok = getCurrToken();
         if (tokenIs(TokenType.INT) || tokenIs(TokenType.REAL) ||
-            tokenIs(TokenType.TRUE) || tokenIs(TokenType.FALSE)) {
-            match(tok.getType(), tok.getValue());
-            return new TokenNode(currentLine(), tok);
+                tokenIs(TokenType.TRUE) || tokenIs(TokenType.FALSE)) {
+            match(tok.getType(), tok.getSymbol());
+            return new TokenNode(tok.getLineNumber(), tok);
         } else if (tokenIs(TokenType.ID)) {
             match(TokenType.ID, "identifier");
-            return new TokenNode(currentLine(), tok);
+            return new TokenNode(tok.getLineNumber(), tok);
         } else if (tokenIs(TokenType.LPAREN)) {
             match(TokenType.LPAREN, "(");
             SyntaxNode e = parseExpr();
