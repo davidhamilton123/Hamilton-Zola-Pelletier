@@ -23,6 +23,7 @@ import java.util.LinkedList;
 import ast.SyntaxTree;
 import ast.nodes.SyntaxNode;
 import ast.nodes.ProgNode;
+import ast.nodes.RelOpNode;
 import ast.nodes.ValNode;
 import ast.nodes.BinOpNode;
 import ast.nodes.UnaryOpNode;
@@ -102,29 +103,50 @@ public class MFLParser extends Parser {
     }
 
     // expr := orExpr
-    private SyntaxNode parseExpr() throws ParseException { return parseOr(); }
+   // expr := orExpr
+private SyntaxNode parseExpr() throws ParseException { return parseOr(); }
 
-    // orExpr := andExpr { OR andExpr }
-    private SyntaxNode parseOr() throws ParseException {
-        SyntaxNode left = parseAnd();
-        while (tokenIs(TokenType.OR)) {
-            Token op = getCurrToken(); match(TokenType.OR, "or");
-            SyntaxNode right = parseAnd();
-            left = new BinOpNode(currentLine(), left, op.getType(), right);
-        }
-        return left;
+// orExpr := andExpr { OR andExpr }
+private SyntaxNode parseOr() throws ParseException {
+    SyntaxNode left = parseAnd();
+    while (tokenIs(TokenType.OR)) {
+        Token op = getCurrToken(); match(TokenType.OR, "or");
+        SyntaxNode right = parseAnd();
+        left = new BinOpNode(currentLine(), left, op.getType(), right);
+    }
+    return left;
+}
+
+// andExpr := relExpr { AND relExpr }
+private SyntaxNode parseAnd() throws ParseException {
+    SyntaxNode left = parseRel();
+    while (tokenIs(TokenType.AND)) {
+        Token op = getCurrToken(); match(TokenType.AND, "and");
+        SyntaxNode right = parseRel();
+        left = new BinOpNode(currentLine(), left, op.getType(), right);
+    }
+    return left;
+}
+
+// relExpr := addExpr [ ( < | > | <= | >= | = | != ) addExpr ]
+// relExpr := addExpr [ ( < | > | <= | >= | = | != ) addExpr ]
+private SyntaxNode parseRel() throws ParseException {
+    SyntaxNode left = parseAdd();
+
+    if (tokenIs(TokenType.LT) || tokenIs(TokenType.GT) ||
+        tokenIs(TokenType.LTE) || tokenIs(TokenType.GTE) ||
+        tokenIs(TokenType.EQ) || tokenIs(TokenType.NEQ)) {
+        Token op = getCurrToken();
+        match(op.getType(), op.getValue());
+        SyntaxNode right = parseAdd();
+        // Use RelOpNode for relational operators
+        left = new RelOpNode(currentLine(), left, op.getType(), right);
     }
 
-    // andExpr := addExpr { AND addExpr }
-    private SyntaxNode parseAnd() throws ParseException {
-        SyntaxNode left = parseAdd();
-        while (tokenIs(TokenType.AND)) {
-            Token op = getCurrToken(); match(TokenType.AND, "and");
-            SyntaxNode right = parseAdd();
-            left = new BinOpNode(currentLine(), left, op.getType(), right);
-        }
-        return left;
-    }
+    return left;
+}
+
+
 
     // addExpr := mulExpr { (ADD|SUB) mulExpr }
     private SyntaxNode parseAdd() throws ParseException {
