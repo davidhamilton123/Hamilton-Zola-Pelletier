@@ -50,7 +50,7 @@ public class MFLParser extends Parser {
     }
 
     /**
-     * Construct a parser that parses the string {@code str}.
+     * Constructs a parser that parses the string {@code str}.
      *
      * @param str the code to evaluate.
      */
